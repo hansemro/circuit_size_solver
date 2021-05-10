@@ -131,15 +131,15 @@ def _d(Cout,x,p):
 ## Path expressions
 
 ### Logical effort
-def _G(gs: np.array):
-    ret = np.product(gs)
+def _G(gs: np.ndarray):
+    return np.product(gs)
 
 ### Electrical effort
 def _H(Cout,Cin):
     return Cout/Cin
 
 ### Branching effort
-def _B(bs: np.array):
+def _B(bs: np.ndarray):
     return np.product(bs)
 
 ### Effort
@@ -147,15 +147,15 @@ def _F(G,B,H):
     return G*B*H
 
 ### Effort delay
-def _D_F(fs: np.array):
+def _D_F(fs: np.ndarray):
     return np.sum(fs)
 
 ### Parasitic delay
-def _P(ps: np.array):
+def _P(ps: np.ndarray):
     return np.sum(ps)
 
 ### Delay
-def _D(ds: np.array):
+def _D(ds: np.ndarray):
     return np.sum(ds)
 
 def _D(D_F, P):
@@ -223,8 +223,10 @@ class logical_unit:
         self.name = name
         self.type = type
         self.type_detailed = None
-        self.g = None
-        self.p = None
+        if not hasattr(self, "g"):
+            self.g = None
+        if not hasattr(self, "p"):
+            self.p = None
         if isinstance(drive,str):
             self.drive = cp.Variable(pos=True, name=drive)
         elif isinstance(drive,int):
