@@ -3,6 +3,7 @@
 # Copyright (C) Hansem Ro <hansemro@outlook.com>
 
 import circuit_size_solver as solver
+from circuit_size_solver import logical_unit
 import numpy as np
 
 # SI Prefix Dictionary
@@ -51,9 +52,9 @@ class decoder:
 
     # Constructor:
     # @param inputs: numpy array with the decoder's inputs
-    # @param depth: (default: 16)
-    # @param width: (default: 32 (bits))
-    # @param topo: (default: 1: "NOR4")
+    # @param depth: (default: 16) (other dimensions are currently unsupported)
+    # @param width: (default: 32 (bits)) (other dimensions are currently unsupported)
+    # @param topo: (default: 1: "NOR4") (topologies for 16x32b decoder only)
     def __init__(self, inputs: np.ndarray, depth=16, width=32, topo=1, inv_cap=1*_prefix.get("f"), output_load_cap_factor=4*_prefix.get("f")):
         assert int(np.log2(depth)) == inputs.size/2
         self.inputs = inputs
@@ -85,7 +86,7 @@ class decoder:
             word_output = "word" + str(i)
             word_name = "word_block" + str(i)
             word_wire_cap = self.__estimate_wire_cap(i)
-            tmp_word = word(word_inputs, word_output, width=width, topo=topo, name=word_name, inv_cap=inv_cap, output_load_cap=self.output_load_cap)
+            tmp_word = word16_32b(word_inputs, word_output, width=width, topo=topo, name=word_name, inv_cap=inv_cap, output_load_cap=self.output_load_cap)
             tmp_word.print_props()
 
     # __gen_pattern: generate an array of input patterns for given word number.
@@ -117,11 +118,10 @@ class decoder:
     # @param word_ver_pitch: (default: 3.6u) vertical pitch of 1 word
     def __estimate_wire_cap(self, word_num, wire_cap_per_um = 0.2 * _prefix.get("f"), word_ver_pitch=3.6 * _prefix.get("u")):
         assert word_num >= 0
-        
         length = (word_num + 1) * word_ver_pitch
-        return wire_cap_per_um * length
+        return wire_cap_per_um * length * self.depth
 
-# word class:
+# word16 class:
 #
 # Example: word9 = (A[3:0] == 3'b1001)
 #            __________
@@ -141,11 +141,167 @@ class decoder:
 # INV-NAND4-INV         : INV(B[3:0], {~A[3], A[2], A[1], ~A[0]}); NAND4(net_nand4, B); INV(word9, net_nand4)
 # NAND4-INV-INV-INV     : Same as NAND4-INV, but with two additional inverters at the end
 # NAND2-NOR2-INV-INV    : Same as NAND2-NOR2, but with two additional inverters at the end
-class word(solver.logical_unit):
+class word16_32b(solver.top_module):
 
     # Constructor:
-    def __init__(self, inputs: np.ndarray, output, width, topo, name, inv_cap=1*_prefix.get("f"), output_load_cap=None):
-        super().__init__(inputs, output, "atomic", name=name)
+    def __init__(self, inputs: np.ndarray, output: str, width, topo, name: str, inv_cap=1*_prefix.get("f"), output_load_cap=None):
+        assert topo is not None
+        self.topo = topo
         self.width = width
-        self.type_detailed = "word_block"
         self.inv_cap = inv_cap
+        self.g = solver._G(self.__get_g_arr_from_topo())
+        self.p = solver._P(self.__get_p_arr_from_topo())
+        super().__init__(inputs, output, type="atomic")
+        self.name = name
+        self.type_detailed = "word_block"
+        self.add_units()
+    
+    def add_units(self):
+        if (self.topo == "2"):
+            nand4_name = self.name + "nand4"
+            nand4_net = "net_" + nand4_name
+            self.add_unit(self.inputs, nand4_net, "nand", name=nand4_name)
+            self.add_inv(nand4_net, self.output, name=self.name + "inv")
+        elif (self.topo == "3"):
+            nand2_1_name = self.name + "nand2_1"
+            nand2_2_name = self.name + "nand2_2"
+            nand2_net1 = "net_" + nand2_1_name
+            nand2_net2 = "net_" + nand2_2_name
+            self.add_unit(self.inputs[0:1], nand2_net1, "nand", name=nand2_1_name)
+            self.add_unit(self.inputs[2:3], nand2_net2, "nand", name=nand2_2_name)
+            self.add_unit(np.array([nand2_net1, nand2_net2]), self.output, "nor", name=self.name + "nor2")
+        elif (self.topo == "4"):
+            inv_1_name = self.name + "inv_1"
+            inv_2_name = self.name + "inv_2"
+            inv_3_name = self.name + "inv_3"
+            inv_4_name = self.name + "inv_4"
+            inv_5_name = self.name + "inv_5"
+            inv_1_net = "net_" + inv_1_name
+            inv_2_net = "net_" + inv_2_name
+            inv_3_net = "net_" + inv_3_name
+            inv_4_net = "net_" + inv_4_name
+            nand4_name = self.name + "nand4"
+            nand4_net = "net_" + nand4_name
+            self.add_inv(self.inputs[0], inv_net1, inv_1_name)
+            self.add_unit(np.array([inv_1_net, inv_2_net, inv_3_net, inv_4_net]), nand4_net, "nand", name=nand4_name)
+            self.add_inv(nand4_net, self.output, name=inv_5_name)
+        elif (self.topo == "5"):
+            nand4_name = self.name + "nand4"
+            nand4_net = "net_" + nand4_name
+            inv_1_name = self.name + "inv_1"
+            inv_2_name = self.name + "inv_2"
+            inv_3_name = self.name + "inv_3"
+            inv_1_net = "net_" + inv_1_name
+            inv_2_net = "net_" + inv_2_name
+            self.add_unit(self.inputs, nand4_net, "nand", name=nand4_name)
+            self.add_inv(nand4_net, inv_1_net, name=inv_1_name)
+            self.add_inv(inv_1_net, inv_2_net, name=inv_2_name)
+            self.add_inv(inv_2_net, self.output, name=inv_3_name)
+        elif (self.topo == "6"):
+            nand2_1_name = self.name + "nand2_1"
+            nand2_2_name = self.name + "nand2_2"
+            nand2_net1 = "net_" + nand2_1_name
+            nand2_net2 = "net_" + nand2_2_name
+            nor2_name = self.name + "nor2"
+            nor2_net = "net_" + nor2_name
+            inv_1_name = self.name + "inv_1"
+            inv_2_name = self.name + "inv_2"
+            inv_3_name = self.name + "inv_3"
+            inv_1_net = "net_" + inv_1_name
+            inv_2_net = "net_" + inv_2_name
+            self.add_unit(self.inputs[0:1], nand2_net1, "nand", name=nand2_1_name)
+            self.add_unit(self.inputs[2:3], nand2_net2, "nand", name=nand2_2_name)
+            self.add_unit(np.array([nand2_net1, nand2_net2]), nor2_net, "nor", name=nor2_name)
+            self.add_inv(nor2_net, inv_1_net, name=inv_1_name)
+            self.add_inv(inv_1_net, inv_2_net, name=inv_2_name)
+            self.add_inv(inv_2_net, self.output, name=inv_3_name)
+        else:
+            self.add_unit(self.inputs, self.output, "nor", name=self.name + "nor4")
+
+    def __get_g_arr_from_topo(self):
+        assert self.topo is not None
+        ret = np.array([])
+        if (self.topo == "2"):
+            ret = np.append(ret, solver.g_nand(4))
+            ret = np.append(ret, solver.g_inv())
+        elif (self.topo == "3"):
+            ret = np.append(ret, solver.g_nand(2))
+            ret = np.append(ret, solver.g_nand(2))
+            ret = np.append(ret, solver.g_nor(2))
+        elif (self.topo == "4"):
+            ret = np.append(ret, solver.g_inv())
+            ret = np.append(ret, solver.g_inv())
+            ret = np.append(ret, solver.g_inv())
+            ret = np.append(ret, solver.g_inv())
+            ret = np.append(ret, solver.g_nand(4))
+            ret = np.append(ret, solver.g_inv())
+        elif (self.topo == "5"):
+            ret = np.append(ret, solver.g_nand(4))
+            ret = np.append(ret, solver.g_inv())
+            ret = np.append(ret, solver.g_inv())
+            ret = np.append(ret, solver.g_inv())
+        elif (self.topo == "6"):
+            ret = np.append(ret, solver.g_nand(2))
+            ret = np.append(ret, solver.g_nand(2))
+            ret = np.append(ret, solver.g_nor(2))
+            ret = np.append(ret, solver.g_inv())
+            ret = np.append(ret, solver.g_inv())
+        else:
+            ret = np.append(ret, solver.g_nor(4))
+        return ret
+
+    def __get_p_arr_from_topo(self):
+        assert self.topo is not None
+        ret = np.array([])
+        if (self.topo == "2"):
+            ret = np.append(ret, solver.p_nand(4))
+            ret = np.append(ret, solver.p_inv())
+        elif (self.topo == "3"):
+            ret = np.append(ret, solver.p_nand(2))
+            ret = np.append(ret, solver.p_nand(2))
+            ret = np.append(ret, solver.p_nor(2))
+        elif (self.topo == "4"):
+            ret = np.append(ret, solver.p_inv())
+            ret = np.append(ret, solver.p_inv())
+            ret = np.append(ret, solver.p_inv())
+            ret = np.append(ret, solver.p_inv())
+            ret = np.append(ret, solver.p_nand(4))
+            ret = np.append(ret, solver.p_inv())
+        elif (self.topo == "5"):
+            ret = np.append(ret, solver.p_nand(4))
+            ret = np.append(ret, solver.p_inv())
+            ret = np.append(ret, solver.p_inv())
+            ret = np.append(ret, solver.p_inv())
+        elif (self.topo == "6"):
+            ret = np.append(ret, solver.p_nand(2))
+            ret = np.append(ret, solver.p_nand(2))
+            ret = np.append(ret, solver.p_nor(2))
+            ret = np.append(ret, solver.p_inv())
+            ret = np.append(ret, solver.p_inv())
+        else:
+            ret = np.append(ret, solver.p_nor(4))
+        return ret
+    
+    # add_unit: Add a unit with specified inputs to a new output net.
+    # @param inputs: str numpy array of input net names 
+    # @param output: name of output net
+    # @param type: type of logic unit
+    # @param Cin: (optional) unit capacitance
+    # @param drive: (optional) unit drive number or string alias
+    # @param name: (optional) unit name
+    def add_unit(self, inputs: np.ndarray, output: str, type, Cin=None, drive=None, name=None):
+        # Check if all inputs exist
+        for input in inputs:
+            assert input in self.nets
+        # Check if output is a new net
+        assert output not in self.nets
+        self.nets.add(output)
+        tmp = logical_unit(inputs, output, type, Cin=Cin, drive=drive, name=name)
+        self.nodes[output].append(tmp)
+    
+    def add_inv(self, input: str, output: str, drive=None, name=None):
+        self.add_unit(np.array([input]), output, "inv", drive=drive, name=name)
+    
+    def add_cap(self, input: str, output: str, Cin, name=None):
+        self.add_unit(np.array([input]), output, "cap", Cin=Cin, name=name)
+
