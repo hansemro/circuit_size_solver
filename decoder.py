@@ -83,13 +83,20 @@ class decoder:
             sub_inputs = self.__gen_pattern(i, inv=inv)
             print(sub_inputs)
             sub_output = "word" + str(i)
-            tmp_word = word(sub_inputs, sub_output, width=width, topo=topo)
-            print(self.__estimate_wire_cap(i))
-    
-    def __gen_pattern(self, num, inv=False):
-        assert num >= 0 and self.depth > num
+            tmp_wire_cap = self.__estimate_wire_cap(i)
+            tmp_word = word(sub_inputs, sub_output, width=width, topo=topo, inv_cap=inv_cap, output_load_cap=self.output_load_cap)
+            
+    # __gen_pattern: generate an array of input patterns for given word number.
+    # Setting inv to True will invert the result.
+    # Assumptions: inputs are given in the following format:
+    #       inputs = np.array(["A[0]", "A[1]", ..., "Ax[0]", "Ax[1]", ...])
+    #       where A and Ax are complimentary
+    # @param word_num: word number
+    # @param inv: invert array result
+    def __gen_pattern(self, word_num, inv=False):
+        assert word_num >= 0 and self.depth > word_num
         ret = np.array([])
-        tmp = num
+        tmp = word_num
         for i in range(0,int(np.log2(self.depth))):
             bit = tmp % 2
             tmp = tmp / 2
@@ -99,10 +106,16 @@ class decoder:
                 ret = np.append(ret, self.inputs[i + int(np.log2(self.depth))])
         return ret
     
+    # __estimate_wire_cap: returns an estimated wire cap for given word number.
+    # Assumptions:
+    #   - 0.2fF/um of wire
+    #   - word decoder has vertical pitch of 3.6um
+    # @param word_num: word number
+    # @param wire_cap_per_um: (default: 0.2f) capacitance per um of wire
+    # @param word_ver_pitch: (default: 3.6u) vertical pitch of 1 word
     def __estimate_wire_cap(self, word_num, wire_cap_per_um = 0.2 * _prefix.get("f"), word_ver_pitch=3.6 * _prefix.get("u")):
         assert word_num >= 0
-        # 0.2fF/um of wire
-        # word decoder has vertical pitch of 3.6um
+        
         length = (word_num + 1) * word_ver_pitch
         return wire_cap_per_um * length
 
