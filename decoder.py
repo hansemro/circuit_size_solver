@@ -80,12 +80,14 @@ class decoder:
         print("topo: ", self.topo_detailed)
         # construct depth number of words as logical units
         for i in range(0,depth):
-            sub_inputs = self.__gen_pattern(i, inv=inv)
-            print(sub_inputs)
-            sub_output = "word" + str(i)
-            tmp_wire_cap = self.__estimate_wire_cap(i)
-            tmp_word = word(sub_inputs, sub_output, width=width, topo=topo, inv_cap=inv_cap, output_load_cap=self.output_load_cap)
-            
+            word_inputs = self.__gen_pattern(i, inv=inv)
+            print(word_inputs)
+            word_output = "word" + str(i)
+            word_name = "word_block" + str(i)
+            word_wire_cap = self.__estimate_wire_cap(i)
+            tmp_word = word(word_inputs, word_output, width=width, topo=topo, name=word_name, inv_cap=inv_cap, output_load_cap=self.output_load_cap)
+            tmp_word.print_props()
+
     # __gen_pattern: generate an array of input patterns for given word number.
     # Setting inv to True will invert the result.
     # Assumptions: inputs are given in the following format:
@@ -142,9 +144,8 @@ class decoder:
 class word(solver.logical_unit):
 
     # Constructor:
-    def __init__(self, inputs: np.ndarray, output, width, topo, inv_cap=1*_prefix.get("f"), output_load_cap=None):
-        self.inputs = inputs
+    def __init__(self, inputs: np.ndarray, output, width, topo, name, inv_cap=1*_prefix.get("f"), output_load_cap=None):
+        super().__init__(inputs, output, "atomic", name=name)
         self.width = width
-        self.type = "atomic"
-        self.type = "word_block"
+        self.type_detailed = "word_block"
         self.inv_cap = inv_cap
