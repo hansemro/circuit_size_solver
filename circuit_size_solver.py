@@ -286,10 +286,8 @@ class top_module(logical_unit):
 
     # Constructor:
     # @param inputs: numpy array of input net names
-    def __init__(self, inputs: np.ndarray):
-        super().__init__(inputs, None, "top")
-        # create array of output nets
-        self.outputs = np.array([])
+    def __init__(self, inputs: np.ndarray, output=None, type="top"):
+        super().__init__(inputs, output, type)
         # create set for nets
         self.nets = set()
         # create graph for subnodes
@@ -366,6 +364,7 @@ class top_module(logical_unit):
 
     # print_props: print properties of all nodes
     def print_props(self):
+        super().print_props()
         for net in self.nodes:
             for unit in self.nodes[net]:
                 unit.print_props()
