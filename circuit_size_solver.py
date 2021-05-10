@@ -286,8 +286,8 @@ class top_module(logical_unit):
 
     # Constructor:
     # @param inputs: numpy array of input net names
-    def __init__(self, inputs: np.ndarray, output=None, type="top"):
-        super().__init__(inputs, output, type)
+    def __init__(self, inputs: np.ndarray, output=None, type="top", name=None):
+        super().__init__(inputs, output, type, name=name)
         # create set for nets
         self.nets = set()
         # create graph for subnodes
@@ -323,6 +323,12 @@ class top_module(logical_unit):
     
     def add_cap(self, input: str, output: str, Cin, name=None):
         self.add_unit(np.array([input]), output, "cap", Cin=Cin, name=name)
+
+    # add_unit: Add a block module to the top level
+    def add_unit(self, unit: logical_unit, inputs: np.ndarray, output: str):
+        assert output not in self.nets
+        self.nets.add(output)
+        self.nodes[output].append(unit)
     
     # get_net: returns net associated to unit name.
     # If there is no match, it will return None.
@@ -370,6 +376,9 @@ class top_module(logical_unit):
                 unit.print_props()
                 print("fanout: ", self.get_fanout(net))
                 print()
+    
+    def print_top_props(self):
+        super().print_props()
 
     # get_cap: returns cap expression at given net
     # @param net: net to inspect
