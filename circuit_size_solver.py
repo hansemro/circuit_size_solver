@@ -515,3 +515,18 @@ class top_module(logical_unit):
                 print("\tCin: ", unit.Cin.value)
                 print("\td: ", unit.d.value)
                 print("\ta: ", unit.a.value)
+
+    # Build list of subnets that are in the path to
+    # the given net.
+    # @param net: net to build a subnet list from.    
+    def __get_subnets(self, net):
+        # print(self.nets)
+        assert net in self.nets
+        # print("checking net: ", net)
+        subnets = np.array([net])
+        unit = self.get_unit(net=net)
+        if unit.type == "pseudo":
+            return np.array([])
+        for input in unit.inputs:
+            subnets = np.append(subnets, self.__get_subnets(input))
+        return subnets
