@@ -499,9 +499,19 @@ class top_module(logical_unit):
         self.problem = cp.Problem(cp.Minimize(self.a))
         print("Problem solvable: ", self.problem.is_dgp(dpp=True))
         print("Minimum arrival time: ", self.problem.solve(gp=True))
-
+        # remove fake cap and pseudo_global net
+        self.del_unit(net="net_fake_cap")
+        self.del_unit(net="net_global")
         # print solution
         for net in self.nets:
             unit = self.get_unit(net=net)
             if unit.type is not None and unit.type == "atomic" and unit.name != "pseudo_global":
-                print("name: ", unit.name, " drive: ", unit.drive.value)
+                print("name: ", unit.name, " drive (" + str(unit.drive) + "): ", unit.drive.value)
+                # unit.print_props()
+                unit.h = _h(self.get_cap(net), unit.Cin)
+                unit.f = _f(unit.g, unit.h.value)
+                print("\th: ", unit.h.value)
+                print("\tf: ", unit.f)
+                print("\tCin: ", unit.Cin.value)
+                print("\td: ", unit.d.value)
+                print("\ta: ", unit.a.value)
