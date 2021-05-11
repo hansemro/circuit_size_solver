@@ -59,7 +59,7 @@ class decoder:
     def __init__(self, inputs: np.ndarray, depth=16, width=32, topo=1, inv_cap=1*_prefix.get("f"), output_load_cap_factor=4*_prefix.get("f")):
         assert int(np.log2(depth)) == inputs.size/2
         self.inputs = inputs
-        self.top = solver.top_module(inputs, name="decoder")
+        self.top = solver.circuit_module(inputs, name="decoder")
         self.depth = depth
         self.width = width
         self.topo = topo
@@ -150,7 +150,7 @@ class decoder:
 # INV-NAND4-INV         : INV(B[3:0], {~A[3], A[2], A[1], ~A[0]}); NAND4(net_nand4, B); INV(word9, net_nand4)
 # NAND4-INV-INV-INV     : Same as NAND4-INV, but with two additional inverters at the end
 # NAND2-NOR2-INV-INV    : Same as NAND2-NOR2, but with two additional inverters at the end
-class word16_32b(solver.top_module):
+class word16_32b(solver.circuit_module):
 
     # Constructor:
     def __init__(self, global_nets, global_nodes, inputs: np.ndarray, output: str, width, topo, name: str, inv_cap=1*_prefix.get("f"), output_wire_cap=None):

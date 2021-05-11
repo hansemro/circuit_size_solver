@@ -30,7 +30,7 @@ import numpy as np
 # Create inputs (as numpy array of strings)
 inputs = np.array(["A", "B", "C", "D"])
 # Create top level module
-top = solver.top_module(inputs)
+top = solver.circuit_module(inputs)
 # Add units starting from input side
 top.add_inv("B", "net_inv1", drive=1, name="inv1")
 top.add_unit(np.array(["A", "net_inv1"]), "net_nand2", type="nand", drive="x2", name="nand2")

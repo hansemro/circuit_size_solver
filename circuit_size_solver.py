@@ -281,8 +281,8 @@ class logical_unit:
         print("Cin: ", self.Cin)
         print("drive: ", self.drive)
 
-# Class for top level module with known inputs
-class top_module(logical_unit):
+# Class for circuit module with known inputs (and optional outputs)
+class circuit_module(logical_unit):
 
     # Constructor:
     # @param inputs: numpy array of input net names
