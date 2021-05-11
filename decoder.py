@@ -96,7 +96,7 @@ class decoder:
         print("Top: check_module: ", self.top.check_module())
         # self.top.print_props()
         self.top.solve()
-        self.top.print_props()
+        # self.top.print_props()
 
     # __gen_pattern: generate an array of input patterns for given word number.
     # Setting inv to True will invert the result.
@@ -130,7 +130,7 @@ class decoder:
         length = (word_num + 1) * word_ver_pitch
         return wire_cap_per_um * length * self.depth
 
-# word16 class:
+# word16_32b class:
 #
 # Example: word9 = (A[3:0] == 3'b1001)
 #            __________
@@ -153,7 +153,9 @@ class decoder:
 class word16_32b(solver.circuit_module):
 
     # Constructor:
-    def __init__(self, global_nets, global_nodes, inputs: np.ndarray, output: str, width, topo, name: str, inv_cap=1*_prefix.get("f"), output_wire_cap=None):
+    def __init__(self, global_nets, global_nodes, inputs: np.ndarray, \
+                output: str, width, topo, name: str, \
+                inv_cap=1*_prefix.get("f"), output_wire_cap=None):
         assert topo is not None
         self.topo = topo
         self.width = width
@@ -164,69 +166,92 @@ class word16_32b(solver.circuit_module):
         self.name = name
         self.type_detailed = "word_block"
         self.add_units(global_nets, global_nodes)
-        self.add_cap(global_nets, global_nodes, self.output, "net_wire_cap", output_wire_cap, name="c_wire" + self.name)
+        self.add_cap(global_nets, global_nodes, self.output, "net_wire_cap", \
+                    output_wire_cap, name="c_wire_" + self.name)
     
     def add_units(self, global_nets, global_nodes):
         if (self.topo == "2"):
-            nand4_name = self.name + "nand4"
+            nand4_name = self.name + "_nand4"
             nand4_net = "net_" + nand4_name
-            self.add_unit(global_nets, global_nodes, self.inputs, nand4_net, "nand", name=nand4_name)
-            self.add_inv(global_nets, global_nodes, nand4_net, self.output, name=self.name + "inv")
+            self.add_unit(global_nets, global_nodes, self.inputs, nand4_net, \
+                        "nand", name=nand4_name)
+            self.add_inv(global_nets, global_nodes, nand4_net, self.output, \
+                        name=self.name + "_inv")
         elif (self.topo == "3"):
-            nand2_1_name = self.name + "nand2_1"
-            nand2_2_name = self.name + "nand2_2"
+            nand2_1_name = self.name + "_nand2_1"
+            nand2_2_name = self.name + "_nand2_2"
             nand2_net1 = "net_" + nand2_1_name
             nand2_net2 = "net_" + nand2_2_name
-            self.add_unit(global_nets, global_nodes, self.inputs[0:1], nand2_net1, "nand", name=nand2_1_name)
-            self.add_unit(global_nets, global_nodes, self.inputs[2:3], nand2_net2, "nand", name=nand2_2_name)
-            self.add_unit(global_nets, global_nodes, np.array([nand2_net1, nand2_net2]), self.output, "nor", name=self.name + "nor2")
+            self.add_unit(global_nets, global_nodes, self.inputs[0:1], \
+                        nand2_net1, "nand", name=nand2_1_name)
+            self.add_unit(global_nets, global_nodes, self.inputs[2:3], \
+                        nand2_net2, "nand", name=nand2_2_name)
+            self.add_unit(global_nets, global_nodes, \
+                        np.array([nand2_net1, nand2_net2]), \
+                        self.output, "nor", name=self.name + "_nor2")
         elif (self.topo == "4"):
-            inv_1_name = self.name + "inv_1"
-            inv_2_name = self.name + "inv_2"
-            inv_3_name = self.name + "inv_3"
-            inv_4_name = self.name + "inv_4"
-            inv_5_name = self.name + "inv_5"
+            inv_1_name = self.name + "_inv_1"
+            inv_2_name = self.name + "_inv_2"
+            inv_3_name = self.name + "_inv_3"
+            inv_4_name = self.name + "_inv_4"
+            inv_5_name = self.name + "_inv_5"
             inv_1_net = "net_" + inv_1_name
             inv_2_net = "net_" + inv_2_name
             inv_3_net = "net_" + inv_3_name
             inv_4_net = "net_" + inv_4_name
-            nand4_name = self.name + "nand4"
+            nand4_name = self.name + "_nand4"
             nand4_net = "net_" + nand4_name
-            self.add_inv(global_nets, global_nodes, self.inputs[0], inv_net1, inv_1_name)
-            self.add_unit(global_nets, global_nodes, np.array([inv_1_net, inv_2_net, inv_3_net, inv_4_net]), nand4_net, "nand", name=nand4_name)
-            self.add_inv(global_nets, global_nodes, nand4_net, self.output, name=inv_5_name)
+            self.add_inv(global_nets, global_nodes, self.inputs[0], \
+                        inv_net1, inv_1_name)
+            self.add_unit(global_nets, global_nodes, \
+                        np.array([inv_1_net, inv_2_net, inv_3_net, inv_4_net]), \
+                        nand4_net, "nand", name=nand4_name)
+            self.add_inv(global_nets, global_nodes, nand4_net, self.output, \
+                        name=inv_5_name)
         elif (self.topo == "5"):
-            nand4_name = self.name + "nand4"
+            nand4_name = self.name + "_nand4"
             nand4_net = "net_" + nand4_name
-            inv_1_name = self.name + "inv_1"
-            inv_2_name = self.name + "inv_2"
-            inv_3_name = self.name + "inv_3"
+            inv_1_name = self.name + "_inv_1"
+            inv_2_name = self.name + "_inv_2"
+            inv_3_name = self.name + "_inv_3"
             inv_1_net = "net_" + inv_1_name
             inv_2_net = "net_" + inv_2_name
-            self.add_unit(global_nets, global_nodes, self.inputs, nand4_net, "nand", name=nand4_name)
-            self.add_inv(global_nets, global_nodes, nand4_net, inv_1_net, name=inv_1_name)
-            self.add_inv(global_nets, global_nodes, inv_1_net, inv_2_net, name=inv_2_name)
-            self.add_inv(global_nets, global_nodes, inv_2_net, self.output, name=inv_3_name)
+            self.add_unit(global_nets, global_nodes, self.inputs, nand4_net, \
+                        "nand", name=nand4_name)
+            self.add_inv(global_nets, global_nodes, nand4_net, inv_1_net, \
+                        name=inv_1_name)
+            self.add_inv(global_nets, global_nodes, inv_1_net, inv_2_net, \
+                        name=inv_2_name)
+            self.add_inv(global_nets, global_nodes, inv_2_net, self.output, \
+                        name=inv_3_name)
         elif (self.topo == "6"):
-            nand2_1_name = self.name + "nand2_1"
-            nand2_2_name = self.name + "nand2_2"
+            nand2_1_name = self.name + "_nand2_1"
+            nand2_2_name = self.name + "_nand2_2"
             nand2_net1 = "net_" + nand2_1_name
             nand2_net2 = "net_" + nand2_2_name
-            nor2_name = self.name + "nor2"
+            nor2_name = self.name + "_nor2"
             nor2_net = "net_" + nor2_name
-            inv_1_name = self.name + "inv_1"
-            inv_2_name = self.name + "inv_2"
-            inv_3_name = self.name + "inv_3"
+            inv_1_name = self.name + "_inv_1"
+            inv_2_name = self.name + "_inv_2"
+            inv_3_name = self.name + "_inv_3"
             inv_1_net = "net_" + inv_1_name
             inv_2_net = "net_" + inv_2_name
-            self.add_unit(global_nets, global_nodes, self.inputs[0:1], nand2_net1, "nand", name=nand2_1_name)
-            self.add_unit(global_nets, global_nodes, self.inputs[2:3], nand2_net2, "nand", name=nand2_2_name)
-            self.add_unit(global_nets, global_nodes, np.array([nand2_net1, nand2_net2]), nor2_net, "nor", name=nor2_name)
-            self.add_inv(global_nets, global_nodes, nor2_net, inv_1_net, name=inv_1_name)
-            self.add_inv(global_nets, global_nodes, inv_1_net, inv_2_net, name=inv_2_name)
-            self.add_inv(global_nets, global_nodes, inv_2_net, self.output, name=inv_3_name)
+            self.add_unit(global_nets, global_nodes, self.inputs[0:1], \
+                        nand2_net1, "nand", name=nand2_1_name)
+            self.add_unit(global_nets, global_nodes, self.inputs[2:3], \
+                        nand2_net2, "nand", name=nand2_2_name)
+            self.add_unit(global_nets, global_nodes, \
+                        np.array([nand2_net1, nand2_net2]), \
+                        nor2_net, "nor", name=nor2_name)
+            self.add_inv(global_nets, global_nodes, nor2_net, inv_1_net, \
+                        name=inv_1_name)
+            self.add_inv(global_nets, global_nodes, inv_1_net, inv_2_net, \
+                        name=inv_2_name)
+            self.add_inv(global_nets, global_nodes, inv_2_net, self.output, \
+                        name=inv_3_name)
         else:
-            self.add_unit(global_nets, global_nodes, self.inputs, self.output, "nor", name=self.name + "nor4")
+            self.add_unit(global_nets, global_nodes, self.inputs, \
+                        self.output, "nor", name=self.name + "_nor4")
 
     def __get_g_arr_from_topo(self):
         assert self.topo is not None
@@ -299,7 +324,8 @@ class word16_32b(solver.circuit_module):
     # @param Cin: (optional) unit capacitance
     # @param drive: (optional) unit drive number or string alias
     # @param name: (optional) unit name
-    def add_unit(self, global_nets, global_nodes, inputs: np.ndarray, output: str, type, Cin=None, drive=None, name=None):
+    def add_unit(self, global_nets, global_nodes, inputs: np.ndarray, \
+                output: str, type, Cin=None, drive=None, name=None):
         # Check if all inputs exist
         for input in inputs:
             assert input in self.nets
@@ -307,13 +333,18 @@ class word16_32b(solver.circuit_module):
         # assert output not in self.nets
         self.nets.add(output)
         global_nets.add(output)
-        tmp = solver.logical_unit(inputs, output, type, Cin=Cin, drive=drive, name=name)
+        tmp = solver.logical_unit(inputs, output, type, Cin=Cin, drive=drive, \
+                    name=name)
         self.nodes[output].append(tmp)
         global_nodes[output].append(tmp)
     
-    def add_inv(self, global_nets, global_nodes, input: str, output: str, drive=None, name=None):
-        self.add_unit(global_nets, global_nodes, np.array([input]), output, "inv", drive=drive, name=name)
+    def add_inv(self, global_nets, global_nodes, input: str, \
+                output: str, drive=None, name=None):
+        self.add_unit(global_nets, global_nodes, np.array([input]), output, \
+                    "inv", drive=drive, name=name)
     
-    def add_cap(self, global_nets, global_nodes, input: str, output: str, Cin, name=None):
-        self.add_unit(global_nets, global_nodes, np.array([input]), output, "cap", Cin=Cin, name=name)
+    def add_cap(self, global_nets, global_nodes, input: str, \
+                output: str, Cin, name=None):
+        self.add_unit(global_nets, global_nodes, np.array([input]), output, \
+                    "cap", Cin=Cin, name=name)
 
