@@ -334,7 +334,18 @@ class top_module(logical_unit):
     def add_unit_mod(self, unit: logical_unit, inputs: np.ndarray, output: str):
         self.nets.add(output)
         self.nodes[output].append(unit)
-    
+
+    # del_unit: Remove a unit from top level
+    def del_unit(self, net=None, name=None):
+        target_net = net
+        if net is None and name is not None:
+            target_net = self.get_net(name)
+        if net is not None:
+            unit = self.get_unit(net=target_net)
+            print("Removing unit: ", unit.name)
+            self.nodes.pop(target_net)
+            self.nets.remove(target_net)
+
     # get_net: returns net associated to unit name.
     # If there is no match, it will return None.
     # @param name: unit name
