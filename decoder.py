@@ -3,8 +3,9 @@
 # Copyright (C) Hansem Ro <hansemro@outlook.com>
 
 import circuit_size_solver as solver
-from circuit_size_solver import logical_unit
+# from circuit_size_solver import logical_unit
 import numpy as np
+from collections import defaultdict
 
 # SI Prefix Dictionary
 # from https://stackoverflow.com/a/10970888
@@ -58,7 +59,7 @@ class decoder:
     def __init__(self, inputs: np.ndarray, depth=16, width=32, topo=1, inv_cap=1*_prefix.get("f"), output_load_cap_factor=4*_prefix.get("f")):
         assert int(np.log2(depth)) == inputs.size/2
         self.inputs = inputs
-        self.top = solver.top_module(inputs)
+        self.top = solver.top_module(inputs, name="decoder")
         self.depth = depth
         self.width = width
         self.topo = topo
@@ -78,16 +79,24 @@ class decoder:
         else:
             self.topo_detailed = "NOR4"
             inv = True
-        print("topo: ", self.topo_detailed)
+        # print("topo: ", self.topo_detailed)
         # construct depth number of words as logical units
         for i in range(0,depth):
             word_inputs = self.__gen_pattern(i, inv=inv)
-            print(word_inputs)
+            # print(word_inputs)
             word_output = "word" + str(i)
             word_name = "word_block" + str(i)
             word_wire_cap = self.__estimate_wire_cap(i)
-            tmp_word = word16_32b(word_inputs, word_output, width=width, topo=topo, name=word_name, inv_cap=inv_cap, output_load_cap=self.output_load_cap)
-            tmp_word.print_props()
+            tmp_word = word16_32b(global_nets=self.top.nets, global_nodes=self.top.nodes, inputs=word_inputs, output=word_output, width=width, topo=topo, name=word_name, inv_cap=inv_cap, output_wire_cap=word_wire_cap)
+            # print("check_module: ", tmp_word.check_module())
+            # tmp_word.print_props()
+            self.top.add_unit_mod(tmp_word, word_inputs, word_output)
+            self.top.add_cap(word_output, "net_" + word_name + "load_cap", Cin=self.output_load_cap, name="c_" + word_name + "_load")
+        # solve
+        print("Top: check_module: ", self.top.check_module())
+        # self.top.print_props()
+        self.top.solve()
+        self.top.print_props()
 
     # __gen_pattern: generate an array of input patterns for given word number.
     # Setting inv to True will invert the result.
@@ -144,7 +153,7 @@ class decoder:
 class word16_32b(solver.top_module):
 
     # Constructor:
-    def __init__(self, inputs: np.ndarray, output: str, width, topo, name: str, inv_cap=1*_prefix.get("f"), output_load_cap=None):
+    def __init__(self, global_nets, global_nodes, inputs: np.ndarray, output: str, width, topo, name: str, inv_cap=1*_prefix.get("f"), output_wire_cap=None):
         assert topo is not None
         self.topo = topo
         self.width = width
@@ -154,22 +163,23 @@ class word16_32b(solver.top_module):
         super().__init__(inputs, output, type="atomic")
         self.name = name
         self.type_detailed = "word_block"
-        self.add_units()
+        self.add_units(global_nets, global_nodes)
+        self.add_cap(global_nets, global_nodes, self.output, "net_wire_cap", output_wire_cap, name="c_wire" + self.name)
     
-    def add_units(self):
+    def add_units(self, global_nets, global_nodes):
         if (self.topo == "2"):
             nand4_name = self.name + "nand4"
             nand4_net = "net_" + nand4_name
-            self.add_unit(self.inputs, nand4_net, "nand", name=nand4_name)
-            self.add_inv(nand4_net, self.output, name=self.name + "inv")
+            self.add_unit(global_nets, global_nodes, self.inputs, nand4_net, "nand", name=nand4_name)
+            self.add_inv(global_nets, global_nodes, nand4_net, self.output, name=self.name + "inv")
         elif (self.topo == "3"):
             nand2_1_name = self.name + "nand2_1"
             nand2_2_name = self.name + "nand2_2"
             nand2_net1 = "net_" + nand2_1_name
             nand2_net2 = "net_" + nand2_2_name
-            self.add_unit(self.inputs[0:1], nand2_net1, "nand", name=nand2_1_name)
-            self.add_unit(self.inputs[2:3], nand2_net2, "nand", name=nand2_2_name)
-            self.add_unit(np.array([nand2_net1, nand2_net2]), self.output, "nor", name=self.name + "nor2")
+            self.add_unit(global_nets, global_nodes, self.inputs[0:1], nand2_net1, "nand", name=nand2_1_name)
+            self.add_unit(global_nets, global_nodes, self.inputs[2:3], nand2_net2, "nand", name=nand2_2_name)
+            self.add_unit(global_nets, global_nodes, np.array([nand2_net1, nand2_net2]), self.output, "nor", name=self.name + "nor2")
         elif (self.topo == "4"):
             inv_1_name = self.name + "inv_1"
             inv_2_name = self.name + "inv_2"
@@ -182,9 +192,9 @@ class word16_32b(solver.top_module):
             inv_4_net = "net_" + inv_4_name
             nand4_name = self.name + "nand4"
             nand4_net = "net_" + nand4_name
-            self.add_inv(self.inputs[0], inv_net1, inv_1_name)
-            self.add_unit(np.array([inv_1_net, inv_2_net, inv_3_net, inv_4_net]), nand4_net, "nand", name=nand4_name)
-            self.add_inv(nand4_net, self.output, name=inv_5_name)
+            self.add_inv(global_nets, global_nodes, self.inputs[0], inv_net1, inv_1_name)
+            self.add_unit(global_nets, global_nodes, np.array([inv_1_net, inv_2_net, inv_3_net, inv_4_net]), nand4_net, "nand", name=nand4_name)
+            self.add_inv(global_nets, global_nodes, nand4_net, self.output, name=inv_5_name)
         elif (self.topo == "5"):
             nand4_name = self.name + "nand4"
             nand4_net = "net_" + nand4_name
@@ -193,10 +203,10 @@ class word16_32b(solver.top_module):
             inv_3_name = self.name + "inv_3"
             inv_1_net = "net_" + inv_1_name
             inv_2_net = "net_" + inv_2_name
-            self.add_unit(self.inputs, nand4_net, "nand", name=nand4_name)
-            self.add_inv(nand4_net, inv_1_net, name=inv_1_name)
-            self.add_inv(inv_1_net, inv_2_net, name=inv_2_name)
-            self.add_inv(inv_2_net, self.output, name=inv_3_name)
+            self.add_unit(global_nets, global_nodes, self.inputs, nand4_net, "nand", name=nand4_name)
+            self.add_inv(global_nets, global_nodes, nand4_net, inv_1_net, name=inv_1_name)
+            self.add_inv(global_nets, global_nodes, inv_1_net, inv_2_net, name=inv_2_name)
+            self.add_inv(global_nets, global_nodes, inv_2_net, self.output, name=inv_3_name)
         elif (self.topo == "6"):
             nand2_1_name = self.name + "nand2_1"
             nand2_2_name = self.name + "nand2_2"
@@ -209,14 +219,14 @@ class word16_32b(solver.top_module):
             inv_3_name = self.name + "inv_3"
             inv_1_net = "net_" + inv_1_name
             inv_2_net = "net_" + inv_2_name
-            self.add_unit(self.inputs[0:1], nand2_net1, "nand", name=nand2_1_name)
-            self.add_unit(self.inputs[2:3], nand2_net2, "nand", name=nand2_2_name)
-            self.add_unit(np.array([nand2_net1, nand2_net2]), nor2_net, "nor", name=nor2_name)
-            self.add_inv(nor2_net, inv_1_net, name=inv_1_name)
-            self.add_inv(inv_1_net, inv_2_net, name=inv_2_name)
-            self.add_inv(inv_2_net, self.output, name=inv_3_name)
+            self.add_unit(global_nets, global_nodes, self.inputs[0:1], nand2_net1, "nand", name=nand2_1_name)
+            self.add_unit(global_nets, global_nodes, self.inputs[2:3], nand2_net2, "nand", name=nand2_2_name)
+            self.add_unit(global_nets, global_nodes, np.array([nand2_net1, nand2_net2]), nor2_net, "nor", name=nor2_name)
+            self.add_inv(global_nets, global_nodes, nor2_net, inv_1_net, name=inv_1_name)
+            self.add_inv(global_nets, global_nodes, inv_1_net, inv_2_net, name=inv_2_name)
+            self.add_inv(global_nets, global_nodes, inv_2_net, self.output, name=inv_3_name)
         else:
-            self.add_unit(self.inputs, self.output, "nor", name=self.name + "nor4")
+            self.add_unit(global_nets, global_nodes, self.inputs, self.output, "nor", name=self.name + "nor4")
 
     def __get_g_arr_from_topo(self):
         assert self.topo is not None
@@ -289,19 +299,21 @@ class word16_32b(solver.top_module):
     # @param Cin: (optional) unit capacitance
     # @param drive: (optional) unit drive number or string alias
     # @param name: (optional) unit name
-    def add_unit(self, inputs: np.ndarray, output: str, type, Cin=None, drive=None, name=None):
+    def add_unit(self, global_nets, global_nodes, inputs: np.ndarray, output: str, type, Cin=None, drive=None, name=None):
         # Check if all inputs exist
         for input in inputs:
             assert input in self.nets
         # Check if output is a new net
-        assert output not in self.nets
+        # assert output not in self.nets
         self.nets.add(output)
-        tmp = logical_unit(inputs, output, type, Cin=Cin, drive=drive, name=name)
+        global_nets.add(output)
+        tmp = solver.logical_unit(inputs, output, type, Cin=Cin, drive=drive, name=name)
         self.nodes[output].append(tmp)
+        global_nodes[output].append(tmp)
     
-    def add_inv(self, input: str, output: str, drive=None, name=None):
-        self.add_unit(np.array([input]), output, "inv", drive=drive, name=name)
+    def add_inv(self, global_nets, global_nodes, input: str, output: str, drive=None, name=None):
+        self.add_unit(global_nets, global_nodes, np.array([input]), output, "inv", drive=drive, name=name)
     
-    def add_cap(self, input: str, output: str, Cin, name=None):
-        self.add_unit(np.array([input]), output, "cap", Cin=Cin, name=name)
+    def add_cap(self, global_nets, global_nodes, input: str, output: str, Cin, name=None):
+        self.add_unit(global_nets, global_nodes, np.array([input]), output, "cap", Cin=Cin, name=name)
 

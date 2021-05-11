@@ -286,20 +286,26 @@ class top_module(logical_unit):
 
     # Constructor:
     # @param inputs: numpy array of input net names
-    def __init__(self, inputs: np.ndarray, output=None, type="top", name=None):
+    def __init__(self, inputs: np.ndarray, output=None, type="top", name=None, nets=None, nodes=None):
         super().__init__(inputs, output, type, name=name)
         # create set for nets
-        self.nets = set()
+        self.nets = nets
+        if nets is None:
+            self.nets = set()
         # create graph for subnodes
         # key: output net
         # value: net driver unit
-        self.nodes = defaultdict(list)
+        self.nodes = nodes
+        if nodes is None:
+            self.nodes = defaultdict(list)
         # add inputs to nets set and add pseudo units for inputs to nodes graph
         for input in inputs:
-            assert input not in self.nets
+            # assert input not in self.nets
+            if input not in self.nets:
+                tmp = logical_unit(np.array([]), input, "pseudo")
+                self.nodes[input].append(tmp)
             self.nets.add(input)
-            tmp = logical_unit(np.array([]), input, "pseudo")
-            self.nodes[input].append(tmp)
+            
     
     # add_unit: Add a unit with specified inputs to a new output net.
     # @param inputs: str numpy array of input net names 
@@ -321,12 +327,11 @@ class top_module(logical_unit):
     def add_inv(self, input: str, output: str, drive=None, name=None):
         self.add_unit(np.array([input]), output, "inv", drive=drive, name=name)
     
-    def add_cap(self, input: str, output: str, Cin, name=None):
+    def add_cap(self, input: str, output: str, Cin: int, name=None):
         self.add_unit(np.array([input]), output, "cap", Cin=Cin, name=name)
 
     # add_unit: Add a block module to the top level
-    def add_unit(self, unit: logical_unit, inputs: np.ndarray, output: str):
-        assert output not in self.nets
+    def add_unit_mod(self, unit: logical_unit, inputs: np.ndarray, output: str):
         self.nets.add(output)
         self.nodes[output].append(unit)
     
@@ -396,10 +401,12 @@ class top_module(logical_unit):
     
     # check_module: returns true if all nodes are connected and false otherwise
     def check_module(self):
+        assert self.type is not None
         visited = set()
         for net in self.nets:
             found = False
             unit = self.get_unit(net=net)
+            assert unit.type is not None
             if unit.type == "cap":
                 found = True
                 visited.add(net)    
@@ -414,6 +421,7 @@ class top_module(logical_unit):
                         break
         for net in self.nets:
             if net not in visited:
+                print("missing net: ", net)
                 return False
         return True
 
