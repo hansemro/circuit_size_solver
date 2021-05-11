@@ -56,7 +56,9 @@ class decoder:
     # @param depth: (default: 16) (other dimensions are currently unsupported)
     # @param width: (default: 32 (bits)) (other dimensions are currently unsupported)
     # @param topo: (default: 1: "NOR4") (topologies for 16x32b decoder only)
-    def __init__(self, inputs: np.ndarray, depth=16, width=32, topo=1, inv_cap=1*_prefix.get("f"), output_load_cap_factor=4*_prefix.get("f")):
+    def __init__(self, inputs: np.ndarray, depth=16, width=32, topo=1, \
+                inv_cap=1*_prefix.get("f"), \
+                output_load_cap_factor=4*_prefix.get("f")):
         assert int(np.log2(depth)) == inputs.size/2
         self.inputs = inputs
         self.top = solver.circuit_module(inputs, name="decoder")
@@ -87,16 +89,21 @@ class decoder:
             word_output = "word" + str(i)
             word_name = "word_block" + str(i)
             word_wire_cap = self.__estimate_wire_cap(i)
-            tmp_word = word16_32b(global_nets=self.top.nets, global_nodes=self.top.nodes, inputs=word_inputs, output=word_output, width=width, topo=topo, name=word_name, inv_cap=inv_cap, output_wire_cap=word_wire_cap)
+            tmp_word = word16_32b(global_nets=self.top.nets, \
+                        global_nodes=self.top.nodes, inputs=word_inputs, \
+                        output=word_output, width=width, topo=topo, \
+                        name=word_name, inv_cap=inv_cap, \
+                        output_wire_cap=word_wire_cap)
             # print("check_module: ", tmp_word.check_module())
             # tmp_word.print_props()
             self.top.add_unit_mod(tmp_word, word_inputs, word_output)
-            self.top.add_cap(word_output, "net_" + word_name + "load_cap", Cin=self.output_load_cap, name="c_" + word_name + "_load")
+            self.top.add_cap(word_output, "net_" + word_name + "load_cap", \
+                        Cin=self.output_load_cap, \
+                        name="c_" + word_name + "_load")
         # solve
         print("Top: check_module: ", self.top.check_module())
         # self.top.print_props()
         self.top.solve()
-        # self.top.print_props()
 
     # __gen_pattern: generate an array of input patterns for given word number.
     # Setting inv to True will invert the result.
@@ -125,7 +132,9 @@ class decoder:
     # @param word_num: word number
     # @param wire_cap_per_um: (default: 0.2f) capacitance per um of wire
     # @param word_ver_pitch: (default: 3.6u) vertical pitch of 1 word
-    def __estimate_wire_cap(self, word_num, wire_cap_per_um = 0.2 * _prefix.get("f"), word_ver_pitch=3.6 * _prefix.get("u")):
+    def __estimate_wire_cap(self, word_num, \
+                wire_cap_per_um = 0.2 * _prefix.get("f"), \
+                word_ver_pitch=3.6 * _prefix.get("u")):
         assert word_num >= 0
         length = (word_num + 1) * word_ver_pitch
         return wire_cap_per_um * length * self.depth
