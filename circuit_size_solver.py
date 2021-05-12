@@ -547,9 +547,9 @@ class circuit_module(logical_unit):
                     print("\ta: ", get_value(unit.a))
 
     # Build list of subnets that are in the path to
-    # the given net.
+    # the given net including itself.
     # @param net: net to build a subnet list from.    
-    def __get_subnets(self, net):
+    def get_subnets(self, net):
         # print(self.nets)
         assert net in self.nets
         # print("checking net: ", net)
@@ -558,5 +558,5 @@ class circuit_module(logical_unit):
         if unit.type == "pseudo":
             return np.array([])
         for input in unit.inputs:
-            subnets = np.append(subnets, self.__get_subnets(input))
+            subnets = np.append(subnets, self.get_subnets(input))
         return subnets
