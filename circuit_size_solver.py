@@ -311,8 +311,7 @@ class circuit_module(logical_unit):
                 self.nodes[input].append(tmp)
             self.nets.add(input)
         self.is_solved = False
-            
-    
+
     # add_unit: Add a unit with specified inputs to a new output net.
     # @param inputs: str numpy array of input net names 
     # @param output: name of output net
@@ -329,10 +328,10 @@ class circuit_module(logical_unit):
         self.nets.add(output)
         tmp = logical_unit(inputs, output, type, Cin=Cin, drive=drive, name=name)
         self.nodes[output].append(tmp)
-    
+
     def add_inv(self, input: str, output: str, drive=None, name=None):
         self.add_unit(np.array([input]), output, "inv", drive=drive, name=name)
-    
+
     def add_cap(self, input: str, output: str, Cin: int, name=None):
         self.add_unit(np.array([input]), output, "cap", Cin=Cin, name=name)
 
@@ -398,7 +397,7 @@ class circuit_module(logical_unit):
                 unit.print_props()
                 print("fanout: ", self.get_fanout(net))
                 print()
-    
+
     def print_top_props(self):
         super().print_props()
 
@@ -415,7 +414,7 @@ class circuit_module(logical_unit):
                 unit = self.get_unit(net=ret_name)
                 cap += unit.Cin
         return cap
-    
+
     # check_module: returns true if all nodes are connected and false otherwise
     def check_module(self):
         assert self.type is not None
@@ -466,7 +465,7 @@ class circuit_module(logical_unit):
                 if expr.is_zero():
                     return unit.d
                 return expr + unit.d
-    
+
     # __max_a: recursively get max arrival time
     def __max_a(self):
         logical_nets = np.array([])
@@ -480,7 +479,6 @@ class circuit_module(logical_unit):
         a = self.__get_a("net_global")
         self.get_unit(net="net_global").a = a
         return a
-
 
     # solve: solve and print optimal sizes
     def solve(self):
