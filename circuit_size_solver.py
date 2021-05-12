@@ -263,7 +263,7 @@ class logical_unit:
                 #     self.p = p_mux(inputs.size)
                 # Cin = g*drive
                 if Cin is not None:
-                    self.drive = _x(Cin, self.g)
+                    self.drive = cp.Constant(_x(Cin, self.g))
                 else:
                     if (self.drive is None):
                         self.drive = cp.Variable(pos=True, name="x_" + self.name)
@@ -464,10 +464,10 @@ class circuit_module(logical_unit):
     def __get_a(self, net):
         assert self.check_module()
         unit = self.get_unit(net=net)
-        if (unit is not None):
-            if (unit.type == "pseudo"):
+        if unit is not None:
+            if unit.type == "pseudo":
                 return cp.Constant(0)
-            elif (unit.type == "atomic"):
+            elif unit.type == "atomic":
                 if (unit.inputs.size == 1):
                     a_tmp = self.__get_a(unit.inputs[0])
                     if a_tmp.is_zero():
@@ -484,12 +484,13 @@ class circuit_module(logical_unit):
                     return unit.d
                 return expr + unit.d
 
-    # __max_a: recursively get max arrival time
+    # __max_a: attach a global net (and cap) to all nets for solver
     def __max_a(self):
         logical_nets = np.array([])
         for net in self.nets:
             unit = self.get_unit(net=net)
-            if unit is not None and unit.type is not None and unit.type == "atomic":
+            assert unit is not None and unit.type is not None
+            if unit.type == "atomic":
                 logical_nets = np.append(logical_nets, net)
         self.add_unit(logical_nets, "net_global", "atomic", name="pseudo_global")
         self.add_cap("net_global", "net_fake_cap", 0, name="fake_cap")
