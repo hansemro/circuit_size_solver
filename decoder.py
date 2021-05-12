@@ -211,7 +211,7 @@ class word16_32b(solver.circuit_module):
             nand4_name = self.name + "_nand4"
             nand4_net = "net_" + nand4_name
             self.add_inv(global_nets, global_nodes, self.inputs[0], \
-                        inv_net1, inv_1_name)
+                        inv_1_net, inv_1_name)
             self.add_unit(global_nets, global_nodes, \
                         np.array([inv_1_net, inv_2_net, inv_3_net, inv_4_net]), \
                         nand4_net, "nand", name=nand4_name)
