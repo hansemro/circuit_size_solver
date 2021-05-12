@@ -245,7 +245,7 @@ class logical_unit:
         self.name = name
         if name is None:
             self.name = self.__generate_name()
-        if (type is not None and type != "top" and type != "pseudo"):
+        if (type is not None and type != "module" and type != "pseudo"):
             if self.__is_fund(type):
                 self.type = "atomic"
                 self.type_detailed = type
@@ -285,7 +285,7 @@ class logical_unit:
             name += "_" + self.type_detailed
             if self.type_detailed != "inv":
                 name += str(self.inputs.size)
-        if self.type == "top":
+        if self.type == "module":
             return name
         return name + "_" + self.output
 
@@ -309,7 +309,7 @@ class circuit_module(logical_unit):
 
     # Constructor:
     # @param inputs: numpy array of input net names
-    def __init__(self, inputs: np.ndarray, output=None, type="top", name=None, nets=None, nodes=None):
+    def __init__(self, inputs: np.ndarray, output=None, type="module", name=None, nets=None, nodes=None):
         super().__init__(inputs, output, type, name=name)
         # create set for nets
         self.nets = nets
