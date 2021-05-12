@@ -228,7 +228,6 @@ class logical_unit:
     def __init__(self, inputs: np.ndarray, output, type=None, Cin=None, drive=None, name=None):
         self.output = output
         self.inputs = inputs
-        self.name = name
         self.type = type
         self.type_detailed = None
         if not hasattr(self, "g"):
@@ -243,13 +242,14 @@ class logical_unit:
         else:
             self.drive = drive
         self.Cin = Cin
+        self.name = name
+        if name is None:
+            self.name = self.__generate_name()
         if (type is not None and type != "top" and type != "pseudo"):
-            if (type != "cap"):
+            if self.__is_fund(type):
                 assert Cin is None
                 self.type = "atomic"
                 self.type_detailed = type
-                if (name is None):
-                    self.name = self.type_detailed + str(self.inputs.size) +  "_" + output
                 if (type == "inv"):
                     self.g = g_inv()
                     self.p = p_inv()
@@ -268,8 +268,24 @@ class logical_unit:
                 self.Cin = cp.multiply(self.g,self.drive)
             elif (type == "cap"):
                 assert Cin is not None
-                if (name is None):
-                    self.name = self.type + "_" + self.output
+
+    # returns true if the given type is a NAND, NOR, or INV
+    def __is_fund(self, type=None):
+        if type == "inv" or type == "nand" or type == "nor":
+            return True
+        return False
+
+    # __generate_name: return a name with type (+ type_detailed) and output
+    def __generate_name(self):
+        assert self.type is not None
+        name = self.type
+        if hasattr(self, "type_detailed") and self.type_detailed is not None:
+            name += "_" + self.type_detailed
+            if self.type_detailed != "inv":
+                name += str(self.inputs.size)
+        if self.type == "top":
+            return name
+        return name + "_" + self.output
 
     # print_props: print logical unit properties
     def print_props(self):
