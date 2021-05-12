@@ -47,7 +47,7 @@ from collections import defaultdict
 #   # Create inputs (as numpy array of strings)
 #   inputs = np.array(["A", "B", "C", "D"])
 #   # Create top level module
-#   top = solver.top_module(inputs)
+#   top = solver.circuit_module(inputs)
 #   # Add units starting from input side
 #   top.add_inv("B", "net_inv1", drive=1, name="inv1")
 #   top.add_unit(np.array(["A", "net_inv1"]), "net_nand2", type="nand", drive="x2", name="nand2")
@@ -267,17 +267,14 @@ class logical_unit:
     def print_props(self):
         print("name: ", self.name)
         print("type: ", self.type)
-        if (self.type == "atomic"):
-            print("type_detailed: ", self.type_detailed)
-            print("g: ", self.g)
-            print("p: ", self.p)
-            if (hasattr(self, 'd')):
-                print("d: ", self.d)
-            if (hasattr(self, 'a')):
-                print("a: ", self.a)
+        print("type_detailed: ", self.type_detailed)
         print("inputs: ", self.inputs)
         print("output: ", self.output)
         print("num_inputs: ", self.inputs.size)
+        print("g: ", self.g)
+        print("p: ", self.p)
+        print("d: ", self.d)
+        print("a: ", self.a)
         print("Cin: ", self.Cin)
         print("drive: ", self.drive)
 
@@ -305,6 +302,7 @@ class circuit_module(logical_unit):
                 tmp = logical_unit(np.array([]), input, "pseudo")
                 self.nodes[input].append(tmp)
             self.nets.add(input)
+        self.is_solved = False
             
     
     # add_unit: Add a unit with specified inputs to a new output net.
@@ -502,19 +500,26 @@ class circuit_module(logical_unit):
         # remove fake cap and pseudo_global net
         self.del_unit(net="net_fake_cap")
         self.del_unit(net="net_global")
-        # print solution
-        for net in self.nets:
-            unit = self.get_unit(net=net)
-            if unit.type is not None and unit.type == "atomic" and unit.name != "pseudo_global":
-                print("name: ", unit.name, " drive (" + str(unit.drive) + "): ", unit.drive.value)
-                # unit.print_props()
-                unit.h = _h(self.get_cap(net), unit.Cin)
-                unit.f = _f(unit.g, unit.h.value)
-                print("\th: ", unit.h.value)
-                print("\tf: ", unit.f)
-                print("\tCin: ", unit.Cin.value)
-                print("\td: ", unit.d.value)
-                print("\ta: ", unit.a.value)
+        self.is_solved = True
+        self.print_solution()
+
+    # print_solution
+    def print_solution(self):
+        if self.is_solved:
+            # print solution
+            for net in self.nets:
+                unit = self.get_unit(net=net)
+                if unit.type is not None and unit.type == "atomic" and unit.name != "pseudo_global":
+                    print("name: ", unit.name, " drive (" + str(unit.drive) + "): ", unit.drive.value)
+                    # unit.print_props()
+                    unit.h = _h(self.get_cap(net), unit.Cin)
+                    unit.f = _f(unit.g, unit.h.value)
+                    print("\th: ", unit.h.value)
+                    print("\tf: ", unit.f)
+                    print("\tCin: ", unit.Cin.value)
+                    print("\td: ", unit.d.value)
+                    print("\ta: ", unit.a.value)
+
 
     # Build list of subnets that are in the path to
     # the given net.
