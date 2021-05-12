@@ -161,6 +161,14 @@ def _D(ds: np.ndarray):
 def _D(D_F, P):
     return D_F + P
 
+# get value from value field if it exists
+def get_value(object):
+    assert object is not None
+    value = object
+    if hasattr(object, "value") and object.value is not None:
+        value = object.value
+    return value
+
 # logical unit class:
 #   At the most fundamental, an output is driven by 1 or more inputs:
 #       output <-- unit <-- inputs
@@ -512,16 +520,15 @@ class circuit_module(logical_unit):
             for net in self.nets:
                 unit = self.get_unit(net=net)
                 if unit.type is not None and unit.type == "atomic" and unit.name != "pseudo_global":
-                    print("name: ", unit.name, " drive (" + str(unit.drive) + "): ", unit.drive.value)
+                    print("name: ", unit.name, " drive (" + str(unit.drive) + "): ", get_value(unit.drive))
                     # unit.print_props()
                     unit.h = _h(self.get_cap(net), unit.Cin)
-                    unit.f = _f(unit.g, unit.h.value)
-                    print("\th: ", unit.h.value)
-                    print("\tf: ", unit.f)
-                    print("\tCin: ", unit.Cin.value)
-                    print("\td: ", unit.d.value)
-                    print("\ta: ", unit.a.value)
-
+                    unit.f = _f(unit.g, get_value(unit.h))
+                    print("\th: ", get_value(unit.h))
+                    print("\tf: ", get_value(unit.f))
+                    print("\tCin: ", get_value(unit.Cin))
+                    print("\td: ", get_value(unit.d))
+                    print("\ta: ", get_value(unit.a))
 
     # Build list of subnets that are in the path to
     # the given net.
