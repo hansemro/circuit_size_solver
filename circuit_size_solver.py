@@ -533,7 +533,7 @@ class circuit_module(logical_unit):
     def print_solution(self):
         if self.is_solved:
             # print solution
-            for net in self.nets:
+            for net in sorted(self.nets):
                 unit = self.get_unit(net=net)
                 if unit.type is not None and unit.type == "atomic" and unit.name != "pseudo_global":
                     print("name: ", unit.name, " drive (" + str(unit.drive) + "): ", get_value(unit.drive))
