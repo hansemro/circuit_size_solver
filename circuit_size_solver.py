@@ -247,7 +247,6 @@ class logical_unit:
             self.name = self.__generate_name()
         if (type is not None and type != "top" and type != "pseudo"):
             if self.__is_fund(type):
-                assert Cin is None
                 self.type = "atomic"
                 self.type_detailed = type
                 if (type == "inv"):
@@ -263,9 +262,12 @@ class logical_unit:
                 #     self.g = g_mux(inputs.size)
                 #     self.p = p_mux(inputs.size)
                 # Cin = g*drive
-                if (self.drive is None):
-                    self.drive = cp.Variable(pos=True, name="x_" + self.name)
-                self.Cin = cp.multiply(self.g,self.drive)
+                if Cin is not None:
+                    self.drive = _x(Cin, self.g)
+                else:
+                    if (self.drive is None):
+                        self.drive = cp.Variable(pos=True, name="x_" + self.name)
+                    self.Cin = cp.multiply(self.g,self.drive)
             elif (type == "cap"):
                 assert Cin is not None
 
@@ -345,8 +347,8 @@ class circuit_module(logical_unit):
         tmp = logical_unit(inputs, output, type, Cin=Cin, drive=drive, name=name)
         self.nodes[output].append(tmp)
 
-    def add_inv(self, input: str, output: str, drive=None, name=None):
-        self.add_unit(np.array([input]), output, "inv", drive=drive, name=name)
+    def add_inv(self, input: str, output: str, Cin=None, drive=None, name=None):
+        self.add_unit(np.array([input]), output, "inv", Cin=Cin, drive=drive, name=name)
 
     def add_cap(self, input: str, output: str, Cin: int, name=None):
         self.add_unit(np.array([input]), output, "cap", Cin=Cin, name=name)
