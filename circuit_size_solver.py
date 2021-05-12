@@ -225,7 +225,7 @@ class logical_unit:
     # @param Cin: (optional) unit capacitance
     # @param drive: (optional) unit drive number or string alias
     # @param name: (optional) unit name
-    def __init__(self, inputs: np.ndarray, output, type=None, Cin=None, drive=None, name=None):
+    def __init__(self, inputs: np.ndarray, output, type: str, Cin=None, drive=None, name=None):
         self.output = output
         self.inputs = inputs
         self.type = type
