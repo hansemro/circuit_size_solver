@@ -493,15 +493,17 @@ class circuit_module(logical_unit):
                 # print("a_", unit.name, " = ", unit.a)
         # build final expression
         self.a = self.__max_a()
-        # create problem and solve
+        # create problem and solve if solvable
         self.problem = cp.Problem(cp.Minimize(self.a))
-        print("Problem solvable: ", self.problem.is_dgp(dpp=True))
-        print("Minimum arrival time: ", self.problem.solve(gp=True))
-        # remove fake cap and pseudo_global net
-        self.del_unit(net="net_fake_cap")
-        self.del_unit(net="net_global")
-        self.is_solved = True
-        self.print_solution()
+        self.is_solvable = self.problem.is_dgp(dpp=True)
+        print("Problem solvable: ", self.is_solvable)
+        if self.is_solvable:
+            print("Minimum arrival time: ", self.problem.solve(gp=True))
+            # remove fake cap and pseudo_global net
+            self.del_unit(net="net_fake_cap")
+            self.del_unit(net="net_global")
+            self.is_solved = True
+            self.print_solution()
 
     # print_solution
     def print_solution(self):
