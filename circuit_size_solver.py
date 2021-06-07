@@ -14,6 +14,7 @@ from collections import defaultdict
 #       1) units can only be added if its input nets exist.
 #       2) every unit has only 1 output
 #       3) no floating nets allowed, so add a capacitor on the net.
+#       4) no loops allowed including flip flops
 #
 #   Basic units:
 #       - "nand"
