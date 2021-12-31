@@ -255,18 +255,12 @@ class logical_unit:
 
     # print_props: print logical unit properties
     def print_props(self):
-        print("name: ", self.name)
-        print("type: ", self.type)
-        print("type_detailed: ", self.type_detailed)
-        print("inputs: ", self.inputs)
-        print("output: ", self.output)
-        print("num_inputs: ", self.inputs.size)
-        print("g: ", self.g)
-        print("p: ", self.p)
-        print("d: ", self.d)
-        print("a: ", self.a)
-        print("Cin: ", self.Cin)
-        print("drive: ", self.drive)
+        selected = ["name", "type", "type_detailed", "inputs", "output",
+                    "num_inputs", "g", "p", "d", "a", "Cin", "drive"]
+        props = vars(self)
+        for prop in props:
+            if prop in selected:
+                print(f"{prop}: {props[prop]}")
 
 # Class for circuit module with known inputs (and optional outputs)
 class circuit_module(logical_unit):
