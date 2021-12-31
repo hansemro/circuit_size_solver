@@ -133,63 +133,77 @@ def get_value(object):
         value = object.value
     return value
 
-# logical unit class:
-#   At the most fundamental, an output is driven by 1 or more inputs:
-#       output <-- unit <-- inputs
-#
-#   Inputs come from a source or another unit.
-#
-#   More complex cases involve multiple outputs:
-#                    _______
-#       output1 <-- |decoder| <-- input1
-#          ...  <-- |       | <-- ...
-#       outputM <-- |_______| <-- inputN
-#
-#   To simplify this, we can break the logical unit into smaller units
-#   with only 1 output:
-#
-#       output1 <-- [logicA] <-- inputs
-#
-#          ...  <-- [logicB] <-- inputs
-#
-#       outputM <-- [logicC] <-- inputs
-#
-#   With this output assumption, we can perceive an output as
-#   a node of a tree:
-#
-#       Example:
-#                    ____
-#       outputH <-- |NAND| <-- inputA
-#                   |    | <-- [INV] <-- inputB
-#                   |____| <-+
-#                            |   ___
-#                            +--|NOR| <-- inputC
-#                               |___| <-- inputD
-#
-#
-#   We can further simplify this by treating the output net
-#   and its logical unit driver as a single node.
-#   The inputs will be driven logical unit of type None so
-#   that the inputs can be identified as such.
-#
-#   Algorithm idea: since an input can fan-out to 1 or multiple outputs,
-#   we can build a tree starting from one of the output nodes.
-#   Each output node will have an associated arrival time expression.
-#   We will have a super output (with maximum of arrival times of all
-#   logical nodes) to find the maximum arrival time delay among the
-#   various outputs. The solver will minimize the super class to determine
-#   optimal solution involving all output nodes.
-#
 class logical_unit:
+    """
+    logical unit class:
+      At the most fundamental, an output is driven by 1 or more inputs:
+          output <-- unit <-- inputs
 
-    # Constructor
-    # @param inputs: numpy array of input net names
-    # @param output: name of output net
-    # @param type: type of logic unit
-    # @param Cin: (optional) unit capacitance
-    # @param drive: (optional) unit drive number or string alias
-    # @param name: (optional) unit name
+      Inputs come from a source or another unit.
+
+      More complex cases involve multiple outputs:
+                       _______
+          output1 <-- |decoder| <-- input1
+             ...  <-- |       | <-- ...
+          outputM <-- |_______| <-- inputN
+
+      To simplify this, we can break the logical unit into smaller units
+      with only 1 output:
+
+          output1 <-- [logicA] <-- inputs
+
+             ...  <-- [logicB] <-- inputs
+
+          outputM <-- [logicC] <-- inputs
+
+      With this output assumption, we can perceive an output as
+      a node of a tree:
+
+          Example:
+                       ____
+          outputH <-- |NAND| <-- inputA
+                      |    | <-- [INV] <-- inputB
+                      |____| <-+
+                               |   ___
+                               +--|NOR| <-- inputC
+                                  |___| <-- inputD
+
+
+      We can further simplify this by treating the output net
+      and its logical unit driver as a single node.
+      The inputs will be driven logical unit of type None so
+      that the inputs can be identified as such.
+
+      Algorithm idea: since an input can fan-out to 1 or multiple outputs,
+      we can build a tree starting from one of the output nodes.
+      Each output node will have an associated arrival time expression.
+      We will have a super output (with maximum of arrival times of all
+      logical nodes) to find the maximum arrival time delay among the
+      various outputs. The solver will minimize the super class to determine
+      optimal solution involving all output nodes.
+    """
+
     def __init__(self, inputs: np.ndarray, output, type: str, Cin=None, drive=None, name=None):
+        """
+        Constructs logical_unit with at least the following properties:
+            - output
+            - inputs
+            - type
+            - type_detailed
+            - g
+            - p
+            - drive
+            - Cin
+            - name
+
+        Params:
+            inputs: numpy array of input net names
+            output: name of output net
+            type: type of logic unit
+            Cin: (optional) unit capacitance
+            drive: (optional) unit drive number or string alias
+            name: (optional) unit name
+        """
         self.output = output
         self.inputs = inputs
         self.type = type
@@ -235,14 +249,18 @@ class logical_unit:
             elif (type == "cap"):
                 assert Cin is not None
 
-    # returns true if the given type is a NAND, NOR, or INV
     def __is_fund__(self, type=None):
+        """
+        Returns True if the given type is a NAND, NOR, or INV
+        """
         if type == "inv" or type == "nand" or type == "nor":
             return True
         return False
 
-    # __generate_name__: return a name with type (+ type_detailed) and output
     def __generate_name__(self):
+        """
+        Returns a name with type (+ type_detailed) and output
+        """
         assert self.type is not None
         name = self.type
         if hasattr(self, "type_detailed") and self.type_detailed is not None:
@@ -253,8 +271,10 @@ class logical_unit:
             return name
         return name + "_" + self.output
 
-    # print_props: print logical unit properties
     def print_props(self):
+        """
+        Prints logical unit properties
+        """
         selected = ["name", "type", "type_detailed", "inputs", "output",
                     "num_inputs", "g", "p", "d", "a", "Cin", "drive"]
         props = vars(self)
@@ -265,9 +285,14 @@ class logical_unit:
 # Class for circuit module with known inputs (and optional outputs)
 class circuit_module(logical_unit):
 
-    # Constructor:
-    # @param inputs: numpy array of input net names
     def __init__(self, inputs: np.ndarray, output=None, type="module", name=None, nets=None, nodes=None):
+        """
+        Constructs an empty circuit_module that can eventually be minimized for
+        delay.
+
+        Params:
+            inputs: numpy array of input net names
+        """
         super().__init__(inputs, output, type, name=name)
         # create set for nets
         self.nets = nets
@@ -288,14 +313,18 @@ class circuit_module(logical_unit):
             self.nets.add(input)
         self.is_solved = False
 
-    # add_unit: Add a unit with specified inputs to a new output net.
-    # @param inputs: str numpy array of input net names
-    # @param output: name of output net
-    # @param type: type of logic unit
-    # @param Cin: (optional) unit capacitance
-    # @param drive: (optional) unit drive number or string alias
-    # @param name: (optional) unit name
     def add_unit(self, inputs: np.ndarray, output: str, type, Cin=None, drive=None, name=None):
+        """
+        Adds a unit with specified inputs to a new output net.
+
+        Params:
+            inputs: str numpy array of input net names
+            output: name of output net
+            type: type of logic unit
+            Cin: (optional) unit capacitance
+            drive: (optional) unit drive number or string alias
+            name: (optional) unit name
+        """
         # Check if all inputs exist
         for input in inputs:
             assert input in self.nets
@@ -306,18 +335,42 @@ class circuit_module(logical_unit):
         self.nodes[output].append(tmp)
 
     def add_inv(self, input: str, output: str, Cin=None, drive=None, name=None):
+        """
+        Adds an inverter with specified inputs to a new output net.
+
+        Params:
+            inputs: str numpy array of input net names
+            output: name of output net
+            Cin: (optional) unit capacitance
+            drive: (optional) unit drive number or string alias
+            name: (optional) unit name
+        """
         self.add_unit(np.array([input]), output, "inv", Cin=Cin, drive=drive, name=name)
 
     def add_cap(self, input: str, output: str, Cin: int, name=None):
+        """
+        Adds a capacitor with specified capacitance (Cin) and input to a new
+        output net.
+
+        Params:
+            input: name of input net
+            output: name of output net
+            Cin: unit capacitance
+            name: (optional) unit name
+        """
         self.add_unit(np.array([input]), output, "cap", Cin=Cin, name=name)
 
-    # add_unit: Add a block module to the top level
     def add_unit_mod(self, unit: logical_unit, inputs: np.ndarray, output: str):
+        """
+        Adds a block module to the top level (global net list & node dict).
+        """
         self.nets.add(output)
         self.nodes[output].append(unit)
 
-    # del_unit: Remove a unit from top level
     def del_unit(self, net=None, name=None):
+        """
+        Removes a unit from top level
+        """
         target_net = net
         if net is None and name is not None:
             target_net = self.get_net(name)
@@ -327,21 +380,30 @@ class circuit_module(logical_unit):
             self.nodes.pop(target_net)
             self.nets.remove(target_net)
 
-    # get_net: returns net associated to unit name.
-    # If there is no match, it will return None.
-    # @param name: unit name
     def get_net(self, name):
+        """
+        Returns net associated to unit name.
+        If there is no match, it will return None.
+
+        Param:
+            name: unit name
+        """
         for net in self.nets:
             for unit in self.nodes[net]:
                 if name == unit.name:
                     return net
         return None
 
-    # get_unit: returns driver unit associated to net or name
-    # If there is no match, it will return None.
-    # @param net: unit net
-    # @param name: unit name (if net is specified, it will skip name search)
     def get_unit(self, net=None, name=None):
+        """
+        Returns driver unit associated to net or name
+        If there is no match, it will return None.
+
+        Params:
+            net: unit net
+            name: unit name (if net is specified, it will skip name search)
+        """
+        # get_unit: returns driver unit associated to net or name
         if (net is not None):
             assert net in self.nets
             for unit in self.nodes[net]:
@@ -352,9 +414,14 @@ class circuit_module(logical_unit):
                 return self.get_unit(name=net)
         return None
 
-    # get_fanout: generate a fanout array for given net
-    # @param net: net to inspect
     def get_fanout(self, net):
+        """
+        Generates a fanout (numpy) array for given net
+
+        Param:
+            net: net to inspect
+        """
+        # get_fanout: generate a fanout array for given net
         ret = np.array([])
         # iterate through all units and add to return
         # list if its input contains net
@@ -365,8 +432,10 @@ class circuit_module(logical_unit):
                 ret = np.append(ret, unit.name)
         return ret
 
-    # print_props: print properties of all nodes
     def print_props(self):
+        """
+        Prints properties of all nodes
+        """
         super().print_props()
         for net in self.nodes:
             for unit in self.nodes[net]:
@@ -375,11 +444,20 @@ class circuit_module(logical_unit):
                 print()
 
     def print_top_props(self):
+        """
+        Prints properties of top level
+
+        Note: this is used for debugging
+        """
         super().print_props()
 
-    # get_cap: returns cap expression at given net
-    # @param net: net to inspect
     def get_cap(self, net):
+        """
+        Returns cap expression at given net
+
+        Param:
+            net: net to inspect
+        """
         assert net in self.nets
         assert self.check_module()
         cap = 0
@@ -391,8 +469,10 @@ class circuit_module(logical_unit):
                 cap += unit.Cin
         return cap
 
-    # check_module: returns true if all nodes are connected and false otherwise
     def check_module(self):
+        """
+        Returns true if all nodes are connected and false otherwise
+        """
         assert self.type is not None
         visited = set()
         for net in self.nets:
@@ -417,9 +497,10 @@ class circuit_module(logical_unit):
                 return False
         return True
 
-    # __get_a__: recursively get arrival time for driver unit
-    # associated with given net
     def __get_a__(self, net):
+        """
+        Gets arrival time for driver unit associated with given net
+        """
         assert self.check_module()
         unit = self.get_unit(net=net)
         if unit is not None:
@@ -442,8 +523,10 @@ class circuit_module(logical_unit):
                     return unit.d
                 return expr + unit.d
 
-    # __max_a__: attach a global net (and cap) to all nets for solver
     def __max_a__(self):
+        """
+        Attaches a global net (and cap) to all nets for solver
+        """
         logical_nets = np.array([])
         for net in self.nets:
             unit = self.get_unit(net=net)
@@ -457,8 +540,10 @@ class circuit_module(logical_unit):
         self.get_unit(net="net_global").a = a
         return a
 
-    # solve: solve and print optimal sizes
     def solve(self):
+        """
+        Solves and print delay-optimized drive sizing for module
+        """
         assert self.check_module()
         # generate delay statement for each module
         for net in self.nets:
@@ -488,8 +573,10 @@ class circuit_module(logical_unit):
             self.is_solved = True
             self.print_solution()
 
-    # print_solution
     def print_solution(self):
+        """
+        Prints solution if already solved. Otherwise, nothing will be printed.
+        """
         if self.is_solved:
             # print solution
             for net in sorted(self.nets):
@@ -505,10 +592,14 @@ class circuit_module(logical_unit):
                     print("\td: ", get_value(unit.d))
                     print("\ta: ", get_value(unit.a))
 
-    # Build list of subnets that are in the path to
-    # the given net including itself.
-    # @param net: net to build a subnet list from.
     def get_subnets(self, net):
+        """
+        Builds a list of subnets that are in the path to
+        the given net including itself.
+
+        Param:
+            net: net to build a subnet list from.
+        """
         # print(self.nets)
         assert net in self.nets
         # print("checking net: ", net)
