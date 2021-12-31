@@ -84,11 +84,11 @@ class decoder:
         # print("topo: ", self.topo_detailed)
         # construct depth number of words as logical units
         for i in range(0,depth):
-            word_inputs = self.__gen_pattern(i, inv=inv)
+            word_inputs = self.__gen_pattern__(i, inv=inv)
             # print(word_inputs)
             word_output = "word" + str(i)
             word_name = "word_block" + str(i)
-            word_wire_cap = self.__estimate_wire_cap(i)
+            word_wire_cap = self.__estimate_wire_cap__(i)
             tmp_word = word16_32b(global_nets=self.top.nets, \
                         global_nodes=self.top.nodes, inputs=word_inputs, \
                         output=word_output, width=width, topo=topo, \
@@ -105,14 +105,15 @@ class decoder:
         # self.top.print_props()
         self.top.solve()
 
-    # __gen_pattern: generate an array of input patterns for given word number.
+    # __gen_pattern__: generate an array of input patterns for given word
+    #                  number.
     # Setting inv to True will invert the result.
     # Assumptions: inputs are given in the following format:
     #       inputs = np.array(["A[0]", "A[1]", ..., "Ax[0]", "Ax[1]", ...])
     #       where A and Ax are complimentary
     # @param word_num: word number
     # @param inv: invert array result
-    def __gen_pattern(self, word_num, inv=False):
+    def __gen_pattern__(self, word_num, inv=False):
         assert word_num >= 0 and self.depth > word_num
         ret = np.array([])
         tmp = word_num
@@ -124,15 +125,16 @@ class decoder:
             else:
                 ret = np.append(ret, self.inputs[i + int(np.log2(self.depth))])
         return ret
-    
-    # __estimate_wire_cap: returns an estimated wire cap for given word number.
+
+    # __estimate_wire_cap__: returns an estimated wire cap for given word
+    #                        number.
     # Assumptions:
     #   - 0.2fF/um of wire
     #   - word decoder has vertical pitch of 3.6um
     # @param word_num: word number
     # @param wire_cap_per_um: (default: 0.2f) capacitance per um of wire
     # @param word_ver_pitch: (default: 3.6u) vertical pitch of 1 word
-    def __estimate_wire_cap(self, word_num, \
+    def __estimate_wire_cap__(self, word_num, \
                 wire_cap_per_um = 0.2 * _prefix.get("f"), \
                 word_ver_pitch=3.6 * _prefix.get("u")):
         assert word_num >= 0
@@ -177,7 +179,7 @@ class word16_32b(solver.circuit_module):
         self.add_units(global_nets, global_nodes)
         self.add_cap(global_nets, global_nodes, self.output, "net_wire_cap", \
                     output_wire_cap, name="c_wire_" + self.name)
-    
+
     def add_units(self, global_nets, global_nodes):
         if (self.topo == "2"):
             nand4_name = self.name + "_nand4"
@@ -325,9 +327,9 @@ class word16_32b(solver.circuit_module):
         else:
             ret = np.append(ret, solver.p_nor(4))
         return ret
-    
+
     # add_unit: Add a unit with specified inputs to a new output net.
-    # @param inputs: str numpy array of input net names 
+    # @param inputs: str numpy array of input net names
     # @param output: name of output net
     # @param type: type of logic unit
     # @param Cin: (optional) unit capacitance
@@ -346,12 +348,12 @@ class word16_32b(solver.circuit_module):
                     name=name)
         self.nodes[output].append(tmp)
         global_nodes[output].append(tmp)
-    
+
     def add_inv(self, global_nets, global_nodes, input: str, \
                 output: str, drive=None, name=None):
         self.add_unit(global_nets, global_nodes, np.array([input]), output, \
                     "inv", drive=drive, name=name)
-    
+
     def add_cap(self, global_nets, global_nodes, input: str, \
                 output: str, Cin, name=None):
         self.add_unit(global_nets, global_nodes, np.array([input]), output, \

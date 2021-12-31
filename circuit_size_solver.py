@@ -43,7 +43,7 @@ from collections import defaultdict
 #   #  x3 = 1.62
 #   #  x4 = 3.37
 #   #  x5 = 6.35
-#   
+#
 #   # Using logical_unit class
 #   # Create inputs (as numpy array of strings)
 #   inputs = np.array(["A", "B", "C", "D"])
@@ -189,7 +189,7 @@ def get_value(object):
 #
 #          ...  <-- [logicB] <-- inputs
 #
-#       output1 <-- [logicC] <-- inputs
+#       outputM <-- [logicC] <-- inputs
 #
 #   With this output assumption, we can perceive an output as
 #   a node of a tree:
@@ -245,9 +245,9 @@ class logical_unit:
         self.Cin = Cin
         self.name = name
         if name is None:
-            self.name = self.__generate_name()
+            self.name = self.__generate_name__()
         if (type is not None and type != "module" and type != "pseudo"):
-            if self.__is_fund(type):
+            if self.__is_fund__(type):
                 self.type = "atomic"
                 self.type_detailed = type
                 if (type == "inv"):
@@ -273,13 +273,13 @@ class logical_unit:
                 assert Cin is not None
 
     # returns true if the given type is a NAND, NOR, or INV
-    def __is_fund(self, type=None):
+    def __is_fund__(self, type=None):
         if type == "inv" or type == "nand" or type == "nor":
             return True
         return False
 
-    # __generate_name: return a name with type (+ type_detailed) and output
-    def __generate_name(self):
+    # __generate_name__: return a name with type (+ type_detailed) and output
+    def __generate_name__(self):
         assert self.type is not None
         name = self.type
         if hasattr(self, "type_detailed") and self.type_detailed is not None:
@@ -332,7 +332,7 @@ class circuit_module(logical_unit):
         self.is_solved = False
 
     # add_unit: Add a unit with specified inputs to a new output net.
-    # @param inputs: str numpy array of input net names 
+    # @param inputs: str numpy array of input net names
     # @param output: name of output net
     # @param type: type of logic unit
     # @param Cin: (optional) unit capacitance
@@ -444,7 +444,7 @@ class circuit_module(logical_unit):
             assert unit.type is not None
             if unit.type == "cap":
                 found = True
-                visited.add(net)    
+                visited.add(net)
             for tmp in self.nodes:
                 if (found):
                     break
@@ -460,9 +460,9 @@ class circuit_module(logical_unit):
                 return False
         return True
 
-    # __get_a: recursively get arrival time for driver unit
+    # __get_a__: recursively get arrival time for driver unit
     # associated with given net
-    def __get_a(self, net):
+    def __get_a__(self, net):
         assert self.check_module()
         unit = self.get_unit(net=net)
         if unit is not None:
@@ -470,13 +470,13 @@ class circuit_module(logical_unit):
                 return cp.Constant(0)
             elif unit.type == "atomic":
                 if (unit.inputs.size == 1):
-                    a_tmp = self.__get_a(unit.inputs[0])
+                    a_tmp = self.__get_a__(unit.inputs[0])
                     if a_tmp.is_zero():
                         return unit.d
                     return a_tmp + unit.d
                 expr = cp.Constant(0)
                 for input in unit.inputs:
-                    a_tmp = self.__get_a(input)
+                    a_tmp = self.__get_a__(input)
                     if expr.is_zero():
                         expr = a_tmp
                     elif not a_tmp.is_zero():
@@ -485,8 +485,8 @@ class circuit_module(logical_unit):
                     return unit.d
                 return expr + unit.d
 
-    # __max_a: attach a global net (and cap) to all nets for solver
-    def __max_a(self):
+    # __max_a__: attach a global net (and cap) to all nets for solver
+    def __max_a__(self):
         logical_nets = np.array([])
         for net in self.nets:
             unit = self.get_unit(net=net)
@@ -496,7 +496,7 @@ class circuit_module(logical_unit):
         self.add_unit(logical_nets, "net_global", "atomic", name="pseudo_global")
         self.add_cap("net_global", "net_fake_cap", 0, name="fake_cap")
         self.get_unit(net="net_global").d = 0
-        a = self.__get_a("net_global")
+        a = self.__get_a__("net_global")
         self.get_unit(net="net_global").a = a
         return a
 
@@ -515,10 +515,10 @@ class circuit_module(logical_unit):
         for net in self.nets:
             unit = self.get_unit(net=net)
             if unit.type is not None and unit.type != "pseudo" and unit.type != "cap":
-                unit.a = self.__get_a(net)
+                unit.a = self.__get_a__(net)
                 # print("a_", unit.name, " = ", unit.a)
         # build final expression
-        self.a = self.__max_a()
+        self.a = self.__max_a__()
         # create problem and solve if solvable
         self.problem = cp.Problem(cp.Minimize(self.a))
         self.is_solvable = self.problem.is_dgp(dpp=True)
@@ -550,7 +550,7 @@ class circuit_module(logical_unit):
 
     # Build list of subnets that are in the path to
     # the given net including itself.
-    # @param net: net to build a subnet list from.    
+    # @param net: net to build a subnet list from.
     def get_subnets(self, net):
         # print(self.nets)
         assert net in self.nets
